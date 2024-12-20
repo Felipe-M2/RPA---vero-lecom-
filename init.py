@@ -136,7 +136,7 @@ class scraping:
         """
             Modelo de json para endpoint
         """
-        data_atual = date.today().strftime('%d/%m/%Y')
+        data_atual = date.today().strftime('%d%m%Y')
         
         dados_ficticios = {
             'NOME_CLIENTE': 'Fulano de Tal',
