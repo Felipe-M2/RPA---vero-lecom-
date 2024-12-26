@@ -5,15 +5,14 @@ from selenium.webdriver.support.ui import WebDriverWait as wdWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from selenium.webdriver.common.keys import Keys
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
 from dotenv import load_dotenv
 from datetime import date
 import os
 import time
-load_dotenv()
 
+load_dotenv()
 router = FastAPI()
 
 class scraping:
@@ -53,13 +52,11 @@ class scraping:
                 (By.CLASS_NAME, 'ant-btn-primary')
             )).click()
             
-            
+            self.abrir_formulario(data)
         except TimeoutException:
             return f'O elemento demorou muito para carregar!'
         except NoSuchElementException:
             return f'O elemento não foi encontrado!'
-        finally:
-            self.abrir_formulario(data)
     
     #Abrir formulario de registro------------------------------
     def abrir_formulario(self, data):
@@ -78,12 +75,11 @@ class scraping:
                 (By.XPATH, "//span[@class='name-process' and text()='Solicitação de Mudança de Endereço V3']")
             )).click()
             
+            self.preencher_form(data)
         except TimeoutException:
             return f'Erro: o elemento demorou para carregar!'
         except NoSuchElementException: 
             return f'Erro: Elemento não encontrado!'
-        finally:
-            self.preencher_form(data)
     
     #Preencher formulario------------------------------
     def preencher_form(self, data):
@@ -274,7 +270,7 @@ class scraping:
         except NoSuchElementException:
             return f'Elemento não encontrado: {elemento}'
 
-@router.post('/rpa')
+@router.post('/api/rpa/mudanca_endereco')
 async def executar_rpa(request: Request):
     bot = scraping()
     
