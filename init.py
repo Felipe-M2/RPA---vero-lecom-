@@ -5,11 +5,16 @@ from selenium.webdriver.support.ui import WebDriverWait as wdWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from selenium.webdriver.common.keys import Keys
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 from dotenv import load_dotenv
 from datetime import date
 import os
 import time
 load_dotenv()
+
+router = FastAPI()
 
 class scraping:
     def __init__(self):  
@@ -18,14 +23,14 @@ class scraping:
         self.driver.maximize_window()
     
     #Config------------------------------
-    def abrir_site(self):
+    def abrir_site(self, data):
         self.driver.get(os.getenv('SITE'))
         self.usuario = os.getenv('USUARIO')
         self.senha = os.getenv('SENHA')
         time.sleep(2)
-        self.loguin()
+        self.loguin(data)
 
-    def loguin(self):
+    def loguin(self, data):
         try:        
             waitDriver = wdWait(self.driver, 10)
             
@@ -54,10 +59,10 @@ class scraping:
         except NoSuchElementException:
             return f'O elemento não foi encontrado!'
         finally:
-            self.abrir_formulario()
+            self.abrir_formulario(data)
     
     #Abrir formulario de registro------------------------------
-    def abrir_formulario(self):
+    def abrir_formulario(self, data):
         try:
             waitDriver = wdWait(self.driver, 10)
             
@@ -78,10 +83,10 @@ class scraping:
         except NoSuchElementException: 
             return f'Erro: Elemento não encontrado!'
         finally:
-            self.preencher_form()
+            self.preencher_form(data)
     
     #Preencher formulario------------------------------
-    def preencher_form(self):
+    def preencher_form(self, data):
         self.waitDriver = wdWait(self.driver, 10)
         
         time.sleep(3)
@@ -133,50 +138,9 @@ class scraping:
             'OS_CAMPO',
         ]
         
-        """
-            Modelo de json para endpoint
-        """
-        data_atual = date.today().strftime('%d%m%Y')
-        
-        dados_ficticios = {
-            'NOME_CLIENTE': 'Fulano de Tal',
-            'CONTRATO': 2061902,
-            'CPF': '00000000000',
-            'TELEFONE': '0000000000',
-            'ENDERECO': 'Rua Fictícia',
-            'NUMERO': 123,
-            'COMPLEMENTO': 'Apto 101',
-            'CEP': '00000000',
-            'BAIRRO': 'Bairro Imaginário',
-            'CIDADE': 'Cidade Exemplo',
-            'ENDERECO_DESTINO': 'Avenida Inventada',
-            'NUMERO_DESTINO': 456,
-            'COMPLEMENTO_DESTINO': 'Sala 202',
-            'CEP_DESTINO': '11111111',
-            'BAIRRO_DESTINO': 'Bairro Destino',
-            'DATA_MUDANCA': data_atual,
-            'TIPO_CLIENTE2': 'física',
-            'ESTADO_CLIENTE': 'GO',
-            'CIDADE_CLIENTE': 'ACREUNA',
-            'CIDADE_ATENDIDA': 's',
-            'CANAL_ATENDIMENTO': 'telefone',
-            'EQUIPE_OPE': 'tahto',
-            'NIVEL_PRIORIDADE': 'baixa',
-            'MESMA_CIDADE': 's',
-            'PREDIO': 's',
-            'INFO_PREDIO': {
-                'NOME_PREDIO': 'Teste',
-                'BLOCOS': 0,
-                'QNT_ANDARES': 0,
-                'NOME_SINDITO': 'Fulano',
-                'TELEFONE_SINDICO': '999999999',
-                'NOME_ZELADOR': 'Fulano 2',
-                'TELEFONE_ZELADOR': '777777777'
-            },
-            'COBERTURA': 'n',
-            'OS_CAMPO': 'n',
-            'OBS': 'FAVOR IGNORAR: ABERTURA DE TESTE RPA - EQUIPE DE DESENVOLVIMENTO TAHTO'
-        }
+        #dados do formulario------------------------------
+        dados_RPA = data
+        dados_RPA['DATA_MUDANCA'] = date.today().strftime('%d%m%Y')
         
         #preenche os campos que não precisa de seleção------------------------------
         """
@@ -190,7 +154,7 @@ class scraping:
                 else:
                     self.waitDriver.until(EC.presence_of_element_located(
                         (By.XPATH, f"//input[@id='{dado}']")
-                    )).send_keys(dados_ficticios[dado])
+                    )).send_keys(dados_RPA[dado])
             except NoSuchElementException:
                 return f'Erro na busca do elemento'
             except TimeoutException:
@@ -204,7 +168,7 @@ class scraping:
         """
         try:
             for data_select in map_site_selecionar:
-                self.input_select(data_select, dados_ficticios[data_select])
+                self.input_select(data_select, dados_RPA[data_select])
         except NoSuchElementException:
             return f"ERRO: Elemento não encontrado"
         except TimeoutException:
@@ -226,11 +190,11 @@ class scraping:
             }
             
             self.waitDriver.until(EC.presence_of_element_located(
-                (By.ID, map_cid_dest[dados_ficticios['ESTADO_CLIENTE']])
+                (By.ID, map_cid_dest[dados_RPA['ESTADO_CLIENTE']])
             )).click()
             
             self.waitDriver.until(EC.presence_of_element_located(
-                (By.XPATH, f"//li[contains(@class, 'input-autocomplete__option')]//span[text()='{dados_ficticios['CIDADE_CLIENTE']}']")
+                (By.XPATH, f"//li[contains(@class, 'input-autocomplete__option')]//span[text()='{dados_RPA['CIDADE_CLIENTE']}']")
             )).click()
         except NoSuchElementException:
             return f"ERRO: cidade não encontrada!"
@@ -241,7 +205,7 @@ class scraping:
         try:
             self.waitDriver.until(EC.presence_of_element_located(
                 (By.ID, 'OBS')
-            )).send_keys(dados_ficticios['OBS'])
+            )).send_keys(dados_RPA['OBS'])
         except NoSuchElementException:
             return f"Erro no preenchimneto de observação"
         except TimeoutException:
@@ -261,7 +225,7 @@ class scraping:
                 ]
                 
                 for data in map_pred_site:
-                    value = dados_ficticios['INFO_PREDIO'][data]
+                    value = dados_RPA['INFO_PREDIO'][data]
                     self.waitDriver.until(EC.presence_of_element_located(
                         (By.ID, data)
                     )).send_keys(value)
@@ -270,7 +234,7 @@ class scraping:
             except TimeoutException:
                 return f"TIMEOUT: erro no preenchimento de informaçoes sobre o predio/condominio"
         
-        if dados_ficticios['PREDIO'] == 's' or dados_ficticios['PREDIO'] == 'sim':
+        if dados_RPA['PREDIO'] == 's' or dados_RPA['PREDIO'] == 'sim':
             data_pred_s()
         
         #finalizar registro------------------------------
@@ -306,9 +270,21 @@ class scraping:
                 (By.ID, f'{elemento}_list')
             )).click()
         except TimeoutException:
-            print(f'TIMEOUT: Erro no preenchimento, tempo excedido -({elemento})-')
+            return f'TIMEOUT: Erro no preenchimento, tempo excedido -({elemento})-'
         except NoSuchElementException:
-            print(f'Elemento não encontrado: {elemento}')
+            return f'Elemento não encontrado: {elemento}'
+
+@router.post('/rpa')
+async def executar_rpa(request: Request):
+    bot = scraping()
+    
+    try:
+        data = await request.json()
         
-iniciar = scraping()
-iniciar.abrir_site()
+        bot.abrir_site(data)
+        
+        return JSONResponse(content={'Resultado': True, 'Mensagem': 'Cadastro reaalizado com sucesso!'},
+        media_type='application/json')
+    except Exception as e:
+        return JSONResponse(content={'Resultado': False, 'Erro': str(e)},
+        media_type='application/json')
